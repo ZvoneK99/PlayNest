@@ -1,11 +1,10 @@
 import React, { useState, useContext } from "react";
 import { View, StyleSheet, Text } from "react-native";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebaseConfig";
+import { supabase } from "../supabase";  // Tvoj Supabase klijent
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import ErrorMessage from "./ui/ErrorMessage";
-import { AuthContext } from "../AuthContext";
+import { AuthContext } from "../AuthContext"; // Pretpostavljam da koristiš AuthContext za upravljanje prijavama
 
 export default function RegisterView({ navigation }) {
   const { login } = useContext(AuthContext);
@@ -13,14 +12,24 @@ export default function RegisterView({ navigation }) {
   const [passw, setPassw] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleRegister = () => {
-    createUserWithEmailAndPassword(auth, email, passw)
-      .then(() => {
-        login(); // automatski ulogiraj korisnika
-      })
-      .catch((error) => {
-        setErrorMsg(error.message);
-      });
+  const handleRegister = async () => {
+    setErrorMsg(""); // Resetiraj prethodne greške
+
+    // Koristi Supabase za registraciju korisnika
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: passw,
+    });
+
+    if (error) {
+      // Ako dođe do greške prikaži poruku
+      setErrorMsg(error.message);
+    } else {
+      // Ako je registracija uspješna, možeš logirati korisnika automatski
+      login(); 
+      // Možda želiš i navigirati korisnika nakon uspješne registracije
+      // navigation.navigate("Home");
+    }
   };
 
   return (

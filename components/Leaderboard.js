@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { firestore } from "../firebaseConfig";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { supabase } from "../supabase";  // Import Supabase klijent
 import { useFocusEffect } from '@react-navigation/native';
 
 const Leaderboard = () => {
@@ -10,18 +9,18 @@ const Leaderboard = () => {
 
     const fetchLeaderboard = async () => {
         try {
-            const usersCollection = collection(firestore, "users");
-            const q = query(usersCollection, orderBy("points", "desc"));
-            const querySnapshot = await getDocs(q);
+            const { data, error } = await supabase
+                .from('users')  // Pretpostavljam da se tabela zove 'users'
+                .select('*')
+                .order('points', { ascending: false }); // Poredaj po bodovima u opadajućem redoslijedu
 
-            const leaderboardData = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
+            if (error) {
+                throw error;
+            }
 
-            setUsers(leaderboardData);
+            setUsers(data);
         } catch (error) {
-            console.error("Error fetching leaderboard data:", error);
+            console.error("Error fetching leaderboard data:", error.message);
         } finally {
             setLoading(false);
         }
@@ -29,8 +28,8 @@ const Leaderboard = () => {
 
     useFocusEffect(
         useCallback(() => {
-            setLoading(true); // Set loading state
-            fetchLeaderboard(); // Fetch data when screen is focused
+            setLoading(true); // Postavi loading state
+            fetchLeaderboard(); // Dohvati podatke kad se ekran fokusira
         }, [])
     );
 
@@ -47,7 +46,7 @@ const Leaderboard = () => {
             <Text style={styles.title}>Ljestvica</Text>
             <FlatList
                 data={users}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item.id.toString()} // Koristi item.id kao ključ
                 renderItem={({ item, index }) => (
                     <View style={styles.leaderboardItem}>
                         <Text style={styles.rank}>{index + 1}.</Text>

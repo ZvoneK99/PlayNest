@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { auth, firestore } from "../firebaseConfig";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-
-
+import { supabase } from "../supabase";  // Import Supabase klijent
 
 const GameOneScreen = () => {
     const [numbers, setNumbers] = useState([]);
@@ -19,14 +16,19 @@ const GameOneScreen = () => {
     useEffect(() => {
         const fetchUserPoints = async () => {
             try {
-                const userId = auth.currentUser.uid;
-                const userDocRef = doc(firestore, "users", userId);
-                const userDoc = await getDoc(userDocRef);
+                const userId = supabase.auth.user()?.id;  // Get current user ID from Supabase
+                if (userId) {
+                    const { data, error } = await supabase
+                        .from('users')  // Table name for users
+                        .select('points')
+                        .eq('id', userId)
+                        .single();  // Get the user data with points
 
-                if (userDoc.exists()) {
-                    setUserPoints(userDoc.data().points || 0);
-                } else {
-                    console.error("User document does not exist");
+                    if (error) {
+                        console.error("Error fetching user points:", error.message);
+                    } else if (data) {
+                        setUserPoints(data.points || 0);
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching user points:", error);
@@ -86,32 +88,41 @@ const GameOneScreen = () => {
         }
     };
 
-
     const updateUserPoints = async (pointsChange) => {
         try {
-            const userId = auth.currentUser.uid; // Get the current user ID
-            const userDocRef = doc(firestore, "users", userId);
-            
-            // Fetch the current user document to get the existing points
-            const userDoc = await getDoc(userDocRef);
+            const userId = supabase.auth.user()?.id;  // Get current user ID from Supabase
+            if (userId) {
+                // Fetch the current user document to get the existing points
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('points')
+                    .eq('id', userId)
+                    .single();
 
-            if (userDoc.exists()) {
-                const currentPoints = userDoc.data().points || 0; // Default to 0 if points don't exist
-                const newPoints = currentPoints + pointsChange;
-                // Update the points in the local state
-                setUserPoints(newPoints);
-                // Update the points in Firestore
-                await updateDoc(userDocRef, { points: newPoints });
+                if (error) {
+                    console.error("Error fetching user data:", error.message);
+                } else if (data) {
+                    const currentPoints = data.points || 0;  // Default to 0 if points don't exist
+                    const newPoints = currentPoints + pointsChange;
 
-                console.log(`User points updated to: ${newPoints}`);
-            } else {
-                console.error("User document does not exist");
+                    // Update the points in Supabase
+                    const { error: updateError } = await supabase
+                        .from('users')
+                        .update({ points: newPoints })
+                        .eq('id', userId);
+
+                    if (updateError) {
+                        console.error("Error updating user points:", updateError.message);
+                    } else {
+                        setUserPoints(newPoints); // Update local state
+                        console.log(`User points updated to: ${newPoints}`);
+                    }
+                }
             }
         } catch (error) {
             console.error("Error updating user points:", error);
         }
     };
-
 
     return (
         <View style={styles.container}>

@@ -4,36 +4,39 @@ import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import ErrorMessage from "./ui/ErrorMessage";
 import { AuthContext } from "../AuthContext";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebaseConfig";
+import { supabase } from "../supabase";
 import { useNavigation } from "@react-navigation/native";
 
 export default function LoggedOutView() {
-  const { login } = useContext(AuthContext);
+  const { login } = useContext(AuthContext); // login funkcija iz AuthContext-a
   const [email, setEmail] = useState("");
   const [passw, setPassw] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const navigation = useNavigation();
 
-  const handleLogin = () => {
-    signInWithEmailAndPassword(auth, email, passw)
-      .then(() => {
-        login();
-      })
-      .catch((error) => {
-        if (error.code === "auth/user-not-found") {
-          setErrorMsg("Email koji ste unijeli nije povezan sa računom.");
-        } else if (error.code === "auth/invalid-email") {
-          setErrorMsg("Uneseni email nije ispravan.");
-        } else if (error.code === "auth/wrong-password") {
-          setErrorMsg("Pogrešna lozinka.");
-        } else {
-          setErrorMsg("Došlo je do pogreške. Pokušajte ponovno.");
-        }
-      });
+  // Handle login funkcija
+  const handleLogin = async () => {
+    setErrorMsg(""); // Reset error poruka
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: passw,
+    });
+
+    if (error) {
+      // Prikazivanje specifičnih poruka o greškama
+      if (error.message.includes("Invalid login credentials")) {
+        setErrorMsg("Neispravan email ili lozinka.");
+      } else {
+        setErrorMsg("Greška pri prijavi: " + error.message);
+      }
+    } else {
+      login(); // Pozivamo login funkciju iz AuthContext-a
+    }
   };
 
+  // Preusmjeravanje na ekran za registraciju
   const handleRegisterRedirect = () => {
     navigation.navigate("Register");
   };
@@ -79,7 +82,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   registerText: {
-    color: "#007bff", 
+    color: "#007bff",
     marginTop: 5,
     fontWeight: "bold",
   },

@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useContext } from "react";
-import { View, Text, StyleSheet, Alert, Touchable, Image } from "react-native";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { auth, firestore } from "../firebaseConfig";
-import { AuthContext } from "../AuthContext";
-//import * as ImagePicker from "expo-image-picker"
-//import { supabase } from "../SupabaseClient";
+import { View, Text, StyleSheet, Alert, Image } from "react-native";
+import { AuthContext } from "../AuthContext";  // Provjeri da je AuthContext ispravno importan
+import { useNavigation } from "@react-navigation/native";
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import { TouchableOpacity } from "react-native";
 
 export default function LoggedInView() {
-  const { logout } = useContext(AuthContext);
+  const { signOut } = useContext(AuthContext);  // Provjeri da koristiš ispravno funkciju iz AuthContext
+  const navigation = useNavigation();
   const [profile, setProfile] = useState({
     name: '',
     age: '',
@@ -20,6 +18,7 @@ export default function LoggedInView() {
   });
   const [loading, setLoading] = useState(true);
 
+  // Funkcija za dohvat profila korisnika
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -43,6 +42,7 @@ export default function LoggedInView() {
     fetchProfile();
   }, []);
 
+  // Funkcija za spremanje profila korisnika
   const handleSaveProfile = async () => {
     try {
       const userId = auth.currentUser.uid;
@@ -54,49 +54,18 @@ export default function LoggedInView() {
     }
   };
 
-  const handleUploadImage = async () => {
-    const userId = auth.currentUser.uid;
-    console.log(userId);
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1
-    });
-
-    if (!result.canceled) {
-      const {uri} = result.assets[0];
-      const fileName = `${userId}-${Date.now()}.jpg`;
-
-      try {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-
-        const {data, error} = await supabase.storage
-                        .from("MathApp")
-                        .upload(fileName, blob);
-
-        
-
-        if (error) {
-          Alert.alert("Greška", "Datoteka nije učitana!");
-          return;
-        }
-        const {data: publicUrlData } = supabase.storage
-                        .from("MathApp")
-                        .getPublicUrl(fileName);
-
-        const publicUrl = publicUrlData.publicUrl;
-
-        setProfile((prev) => ({...prev, profileImage: publicUrl}));
-        // await handleSaveProfile ();
-
-      } catch (uploadError) {
-
-      }
+  // Funkcija za odjavu
+  const handleLogout = async () => {
+    try {
+      await signOut(navigation);  // Pozivamo signOut funkciju iz AuthContext
+      navigation.navigate("Login");  // Preusmjeravanje na Login ekran
+    } catch (error) {
+      console.error("Greška pri odjavi: ", error);
+      Alert.alert("Greška", "Došlo je do greške pri odjavi.");
     }
-  }
+  };
 
+  // Prikazivanje loading stanja dok se profil učitava
   if (loading) {
     return (
       <View style={styles.container}>
@@ -105,11 +74,17 @@ export default function LoggedInView() {
     );
   }
 
+  // Funkcija za upload slike (ako je potrebno)
+  const handleUploadImage = () => {
+    // Implementiraj funkcionalnost za upload slike ovdje
+    console.log("Upload image functionality here");
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Dobrodošli na sustav</Text>
 
-      <LoginButton title="Odjavi se" onPress={logout} />
+      <LoginButton title="Odjavi se" onPress={handleLogout} />  {/* Gumb za odjavu */}
 
       {profile.profileImage ? (
         <Image source={{ uri: profile.profileImage }} style={styles.profileImage} />
@@ -174,8 +149,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   buttonText: {
-      color: '#FFFFFF', 
-      fontSize: 16,
-      textAlign: "center"
+    color: '#FFFFFF', 
+    fontSize: 16,
+    textAlign: "center"
   },
 });
