@@ -3,8 +3,8 @@ import { View, StyleSheet, Text, TouchableOpacity } from "react-native";
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import ErrorMessage from "./ui/ErrorMessage";
-import { AuthContext } from "../AuthContext";
-import { supabase } from "../supabase";
+import { AuthContext } from "../../AuthContext";
+import { supabase } from "../../supabase"; // Ispravna putanja prema rootu
 import { useNavigation } from "@react-navigation/native";
 
 export default function LoggedOutView() {

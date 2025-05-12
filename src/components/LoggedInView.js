@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { View, Text, StyleSheet, Alert, Image } from "react-native";
-import { AuthContext } from "../AuthContext";  // Provjeri da je AuthContext ispravno importan
+import { AuthContext } from "../../AuthContext";  // Provjeri da je AuthContext ispravno importan
 import { useNavigation } from "@react-navigation/native";
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";

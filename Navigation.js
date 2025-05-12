@@ -1,9 +1,9 @@
 import React, { useContext } from "react";
 import { AuthContext } from "./AuthContext";
-import LoggedInTabs from "./components/LoggedInTabs";
-import LoggedOutView from "./components/LoggedOutView";
-import RegisterView from "./components/RegisterView";
-import WhackAMole from "./components/WhackAMole"; // Samo WhackAMole ostaje
+import LoggedInTabs from "./src/components/LoggedInTabs";
+import LoggedOutView from "./src/components/LoggedOutView";
+import RegisterView from "./src/components/RegisterView";
+import WhackAMole from "./src/components/WhackAMole"; // Samo WhackAMole ostaje
 
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";

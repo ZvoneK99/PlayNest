@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { supabase } from "../supabase";  // Import Supabase klijent
+import { supabase } from "../../supabase";  // Import Supabase klijent
 import { useFocusEffect } from '@react-navigation/native';
 
 const Leaderboard = () => {
