@@ -1,34 +1,72 @@
 import React, { useState, useContext } from "react";
 import { View, StyleSheet, Text } from "react-native";
-import { supabase } from "../supabase";  // Tvoj Supabase klijent
+import { supabase } from "../supabase"; // Provjeri da je točan path
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import ErrorMessage from "./ui/ErrorMessage";
-import { AuthContext } from "../AuthContext"; // Pretpostavljam da koristiš AuthContext za upravljanje prijavama
+import { AuthContext } from "../AuthContext";
 
 export default function RegisterView({ navigation }) {
   const { login } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [passw, setPassw] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleRegister = async () => {
-    setErrorMsg(""); // Resetiraj prethodne greške
+    setErrorMsg("");
 
-    // Koristi Supabase za registraciju korisnika
+    // Provjera valjanosti unosa
+    if (!email || !passw || !name || !age) {
+      setErrorMsg("Sva polja su obavezna!");
+      return;
+    }
+
+    // Provjera email formata (jednostavna provjera)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setErrorMsg("Unesite ispravan email.");
+      return;
+    }
+
+    // Provjera da dob bude broj
+    if (isNaN(age) || age < 0) {
+      setErrorMsg("Unesite ispravnu dob.");
+      return;
+    }
+
+    // Pozivamo Supabase za registraciju korisnika
     const { data, error } = await supabase.auth.signUp({
       email,
       password: passw,
     });
 
+    console.log("Signup response:", data);  // Logiranje odgovora
+
     if (error) {
-      // Ako dođe do greške prikaži poruku
+      console.log("Signup error:", error);
       setErrorMsg(error.message);
-    } else {
-      // Ako je registracija uspješna, možeš logirati korisnika automatski
-      login(); 
-      // Možda želiš i navigirati korisnika nakon uspješne registracije
-      // navigation.navigate("Home");
+    } else if (data.user) {
+      // Umetanje podataka u tabelu 'users'
+      const { error: insertError } = await supabase
+        .from("users")
+        .insert([
+          {
+            email: data.user.email,
+            name: name,
+            age: parseInt(age),  // Pretvaranje dobi u broj
+            points: 0,
+          },
+        ]);
+
+      if (insertError) {
+        console.log("Insert error:", insertError);
+        setErrorMsg(insertError.message);
+      } else {
+        login(); // Pozivanje funkcije za login, ili navigacija na drugi screen
+        // navigation.navigate('Home');  // Ako želiš direktno navigirati na Home screen
+      }
     }
   };
 
@@ -46,6 +84,18 @@ export default function RegisterView({ navigation }) {
         value={passw}
         secureTextEntry={true}
         onChangeText={setPassw}
+      />
+      <LoginInput
+        placeholder="Unesite ime"
+        value={name}
+        secureTextEntry={false}
+        onChangeText={setName}
+      />
+      <LoginInput
+        placeholder="Unesite dob"
+        value={age}
+        secureTextEntry={false}
+        onChangeText={setAge}
       />
       <ErrorMessage error={errorMsg} />
       <LoginButton title="Registriraj se" onPress={handleRegister} />
