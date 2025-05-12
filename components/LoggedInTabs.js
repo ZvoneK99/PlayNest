@@ -4,7 +4,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from 'react-native-vector-icons'; // Adjust icon library as needed
 import LoggedInView from './LoggedInView';
 import GamesScreen from './GamesScreen';
-import GameOneScreen from './GameOneScreen';
 import Leaderboard from './Leaderboard';
 
 const Tab = createBottomTabNavigator();
@@ -34,7 +33,6 @@ export default function LoggedInTabs() {
         tabBarInactiveTintColor: 'gray',
       })}
     >
-      <Tab.Screen name="GameOne" component={GameOneScreen} />
       <Tab.Screen name="Profil" component={LoggedInView} />
       <Tab.Screen name="Igrice" component={GamesScreen} />
       <Tab.Screen name="Ljestvica" component={Leaderboard} />

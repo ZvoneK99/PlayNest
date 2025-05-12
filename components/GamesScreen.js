@@ -6,19 +6,13 @@ export default function GamesScreen({ navigation }) {
     <View style={styles.container}>
       <Text style={styles.text}>Dobrodošli u sekciju Igrice!</Text>
 
-      {/* Gumb za GameOneScreen */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('GameOneScreen')}>
-        <Text style={styles.buttonText}>Igra 1</Text>
-      </TouchableOpacity>
-
       {/* Gumb za Whack a Mole */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => navigation.navigate('WhackAMole')}>
         <Text style={styles.buttonText}>Whack a Mole (Krtica)</Text>
       </TouchableOpacity>
+
     </View>
   );
 }

@@ -3,8 +3,7 @@ import { AuthContext } from "./AuthContext";
 import LoggedInTabs from "./components/LoggedInTabs";
 import LoggedOutView from "./components/LoggedOutView";
 import RegisterView from "./components/RegisterView";
-import GameOneScreen from "./components/GameOneScreen";
-import WhackAMole from "./components/WhackAMole";
+import WhackAMole from "./components/WhackAMole"; // Samo WhackAMole ostaje
 
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -22,11 +21,6 @@ export default function Navigation() {
             name="Dobrodošli na sustav"
             component={LoggedInTabs}
             options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="GameOneScreen"
-            component={GameOneScreen}
-            options={{ title: "Igra 1" }}
           />
           <Stack.Screen
             name="WhackAMole"

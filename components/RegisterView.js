@@ -10,15 +10,16 @@ export default function RegisterView({ navigation }) {
   const { login } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [passw, setPassw] = useState("");
+  const [confirmPassw, setConfirmPassw] = useState(""); // Za potvrdu lozinke
   const [name, setName] = useState("");
-  const [age, setAge] = useState("");
+  const [surname, setSurname] = useState(""); // Prezime
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleRegister = async () => {
     setErrorMsg("");
 
     // Provjera valjanosti unosa
-    if (!email || !passw || !name || !age) {
+    if (!email || !passw || !name || !surname || !confirmPassw) {
       setErrorMsg("Sva polja su obavezna!");
       return;
     }
@@ -30,9 +31,9 @@ export default function RegisterView({ navigation }) {
       return;
     }
 
-    // Provjera da dob bude broj
-    if (isNaN(age) || age < 0) {
-      setErrorMsg("Unesite ispravnu dob.");
+    // Provjera da lozinke odgovaraju
+    if (passw !== confirmPassw) {
+      setErrorMsg("Lozinke se ne podudaraju.");
       return;
     }
 
@@ -55,7 +56,7 @@ export default function RegisterView({ navigation }) {
           {
             email: data.user.email,
             name: name,
-            age: parseInt(age),  // Pretvaranje dobi u broj
+            surname: surname, // Prezime
             points: 0,
           },
         ]);
@@ -74,6 +75,18 @@ export default function RegisterView({ navigation }) {
     <View style={styles.container}>
       <Text style={styles.title}>Registracija</Text>
       <LoginInput
+        placeholder="Unesite ime"
+        value={name}
+        secureTextEntry={false}
+        onChangeText={setName}
+      />
+      <LoginInput
+        placeholder="Unesite prezime"
+        value={surname}
+        secureTextEntry={false}
+        onChangeText={setSurname}
+      />
+      <LoginInput
         placeholder="Unesite Vašu email adresu"
         value={email}
         secureTextEntry={false}
@@ -86,16 +99,10 @@ export default function RegisterView({ navigation }) {
         onChangeText={setPassw}
       />
       <LoginInput
-        placeholder="Unesite ime"
-        value={name}
-        secureTextEntry={false}
-        onChangeText={setName}
-      />
-      <LoginInput
-        placeholder="Unesite dob"
-        value={age}
-        secureTextEntry={false}
-        onChangeText={setAge}
+        placeholder="Potvrdite lozinku"
+        value={confirmPassw}
+        secureTextEntry={true}
+        onChangeText={setConfirmPassw}
       />
       <ErrorMessage error={errorMsg} />
       <LoginButton title="Registriraj se" onPress={handleRegister} />
