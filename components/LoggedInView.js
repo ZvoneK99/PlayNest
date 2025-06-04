@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useContext } from "react";
-import { View, Text, StyleSheet, Alert, Image, TouchableOpacity } from "react-native";
-import { supabase } from "../supabase";  // Tvoj Supabase klijent
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import { supabase } from "../supabase"; // tvoj supabase klijent
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
-import { AuthContext } from "../AuthContext"; // Ako ti treba signOut
+import { AuthContext } from "../AuthContext";
 import { useNavigation } from "@react-navigation/native";
 
 export default function LoggedInView() {
-  const { signOut } = useContext(AuthContext); // Za odjavu korisnika
+  const { signOut } = useContext(AuthContext);
   const navigation = useNavigation();
 
   const [session, setSession] = useState(null);
@@ -21,7 +31,6 @@ export default function LoggedInView() {
     points: 0,
   });
 
-  // Dohvati sesiju i profil korisnika
   useEffect(() => {
     const fetchSessionAndProfile = async () => {
       try {
@@ -45,14 +54,13 @@ export default function LoggedInView() {
 
         setSession(session);
 
-        // Dohvati profil iz baze prema user id-u
         let { data, error } = await supabase
           .from("profiles")
           .select("full_name, age, avatar_url, points")
           .eq("id", session.user.id)
           .single();
 
-        if (error && error.code !== "PGRST116") { // PGRST116 = no rows found
+        if (error && error.code !== "PGRST116") {
           console.error("Greška pri dohvaćanju profila:", error);
           Alert.alert("Greška", "Nije moguće dohvatiti profil korisnika.");
         }
@@ -75,7 +83,6 @@ export default function LoggedInView() {
 
     fetchSessionAndProfile();
 
-    // Slušaj promjene u auth stanju da update sesiju
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -86,31 +93,28 @@ export default function LoggedInView() {
   }, []);
 
   const handleSaveProfile = async () => {
-  try {
-    if (!session?.user) throw new Error("Korisnik nije prijavljen");
+    try {
+      if (!session?.user) throw new Error("Korisnik nije prijavljen");
 
-    const updates = {
-      id: session.user.id,
-      email: session.user.email,     // <-- dodaj email ovdje
-      full_name: profile.full_name,
-      age: profile.age ? parseInt(profile.age, 10) : null,
-      avatar_url: profile.avatar_url,
-      updated_at: new Date().toISOString(),
-    };
+      const updates = {
+        id: session.user.id,
+        email: session.user.email,
+        full_name: profile.full_name,
+        age: profile.age ? parseInt(profile.age, 10) : null,
+        avatar_url: profile.avatar_url,
+        updated_at: new Date().toISOString(),
+      };
 
-    console.log("Šaljem u Supabase:", updates);
+      const { error } = await supabase.from("profiles").upsert(updates);
 
-    const { error } = await supabase.from("profiles").upsert(updates);
+      if (error) throw error;
 
-    if (error) throw error;
-
-    Alert.alert("Uspjeh", "Profil je uspješno spremljen!");
-  } catch (error) {
-    console.error("Greška pri spremanju profila:", error);
-    Alert.alert("Greška", "Nije moguće spremiti profil.");
-  }
-};
-
+      Alert.alert("Uspjeh", "Profil je uspješno spremljen!");
+    } catch (error) {
+      console.error("Greška pri spremanju profila:", error);
+      Alert.alert("Greška", "Nije moguće spremiti profil.");
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -122,14 +126,76 @@ export default function LoggedInView() {
     }
   };
 
-  const handleUploadImage = () => {
-    // Ovdje možeš dodati kasnije funkcionalnost za upload slike
-    console.log("Upload image functionality here");
+  const handleUploadImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert("Greška", "Dopuštenje za pristup galeriji nije odobreno.");
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (pickerResult.canceled) return;
+
+      const imageUri = pickerResult.assets?.[0]?.uri;
+      if (!imageUri) {
+        Alert.alert("Greška", "Nije odabrana nijedna slika.");
+        return;
+      }
+
+      // čitanje slike kao base64 string
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // kreiramo Blob za upload u Supabase
+      const blob = await (await fetch(`data:image/jpeg;base64,${base64}`)).blob();
+
+      const fileExt = imageUri.split(".").pop();
+      const fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, blob, {
+          contentType: blob.type,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error("Greška pri uploadu slike:", uploadError);
+        Alert.alert("Greška", "Upload slike nije uspio: " + uploadError.message);
+        return;
+      }
+
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 dana valjanosti linka
+
+      if (signedUrlError) {
+        console.error("Greška kod signed URL:", signedUrlError);
+        Alert.alert("Greška", "Ne mogu dobiti signed URL.");
+        return;
+      }
+
+      setProfile({ ...profile, avatar_url: signedUrlData.signedUrl });
+      Alert.alert("Uspjeh", "Slika je postavljena!");
+    } catch (error) {
+      console.error("Greška pri uploadu slike:", error);
+      Alert.alert("Greška", "Došlo je do problema pri postavljanju slike.");
+    }
   };
 
   if (loading) {
     return (
       <View style={styles.container}>
+        <ActivityIndicator size="large" color="navy" />
         <Text style={styles.text}>Učitavanje profila...</Text>
       </View>
     );
@@ -142,7 +208,9 @@ export default function LoggedInView() {
       <LoginButton title="Odjavi se" onPress={handleLogout} />
 
       {profile.avatar_url ? (
-        <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
+        <View style={styles.imageContainer}>
+          <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
+        </View>
       ) : (
         <Text>Nema profilne slike!</Text>
       )}
@@ -170,11 +238,17 @@ export default function LoggedInView() {
 }
 
 const styles = StyleSheet.create({
+  imageContainer: {
+    marginVertical: 15,
+    borderRadius: 100,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "blue",
+  },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 10,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
   container: {
     padding: 20,

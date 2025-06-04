@@ -10,9 +10,9 @@ const Leaderboard = () => {
     const fetchLeaderboard = async () => {
         try {
             const { data, error } = await supabase
-                .from('users')  // Pretpostavljam da se tabela zove 'users'
+                .from('profiles')
                 .select('*')
-                .order('points', { ascending: false }); // Poredaj po bodovima u opadajućem redoslijedu
+                .order('points', { ascending: false });
 
             if (error) {
                 throw error;
@@ -28,8 +28,8 @@ const Leaderboard = () => {
 
     useFocusEffect(
         useCallback(() => {
-            setLoading(true); // Postavi loading state
-            fetchLeaderboard(); // Dohvati podatke kad se ekran fokusira
+            setLoading(true);
+            fetchLeaderboard();
         }, [])
     );
 
@@ -46,11 +46,17 @@ const Leaderboard = () => {
             <Text style={styles.title}>Ljestvica</Text>
             <FlatList
                 data={users}
-                keyExtractor={(item) => item.id.toString()} // Koristi item.id kao ključ
+                keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item, index }) => (
                     <View style={styles.leaderboardItem}>
                         <Text style={styles.rank}>{index + 1}.</Text>
-                        <Text style={styles.name}>{item.name || "Nepoznati korisnik"}</Text>
+                        <Text style={styles.name}>
+                            {item.full_name && item.full_name.trim() !== ''
+                                ? item.full_name
+                                : item.email && item.email.trim() !== ''
+                                    ? item.email
+                                    : `Guest${item.id}`}
+                        </Text>
                         <Text style={styles.points}>{item.points || 0} bodova</Text>
                     </View>
                 )}
