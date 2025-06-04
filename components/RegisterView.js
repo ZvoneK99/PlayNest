@@ -4,7 +4,7 @@ import { supabase } from "../supabase";  // Tvoj Supabase klijent
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import ErrorMessage from "./ui/ErrorMessage";
-import { AuthContext } from "../AuthContext"; // Pretpostavljam da koristiš AuthContext za upravljanje prijavama
+import { AuthContext } from "../AuthContext"; 
 
 export default function RegisterView({ navigation }) {
   const { login } = useContext(AuthContext);
@@ -12,25 +12,48 @@ export default function RegisterView({ navigation }) {
   const [passw, setPassw] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleRegister = async () => {
-    setErrorMsg(""); // Resetiraj prethodne greške
+ const handleRegister = async () => {
+  setErrorMsg(""); // Resetiraj greške
 
-    // Koristi Supabase za registraciju korisnika
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password: passw,
-    });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: passw,
+  });
 
-    if (error) {
-      // Ako dođe do greške prikaži poruku
-      setErrorMsg(error.message);
-    } else {
-      // Ako je registracija uspješna, možeš logirati korisnika automatski
-      login(); 
-      // Možda želiš i navigirati korisnika nakon uspješne registracije
-      // navigation.navigate("Home");
-    }
-  };
+  if (error) {
+    setErrorMsg(error.message);
+    return;
+  }
+
+  const user = data.user;
+  if (!user) {
+    setErrorMsg("Korisnik nije vraćen iz Supabase.");
+    return;
+  }
+
+  // ⬇️ Insert u 'profiles' tablicu
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .insert([
+      {
+        id: user.id,      // isti kao id iz auth
+        email: email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        points: 0,         // inicijalna vrijednost
+      },
+    ]);
+
+  if (profileError) {
+    setErrorMsg("Greška pri spremanju profila: " + profileError.message);
+    return;
+  }
+
+  // ⬇️ Ako sve prođe OK:
+  login(); // ili navigation.navigate("Home")
+};
+
+
 
   return (
     <View style={styles.container}>
