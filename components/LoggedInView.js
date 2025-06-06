@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
+import { decode } from "base64-arraybuffer";
 import { supabase } from "../supabase"; // tvoj supabase klijent
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
@@ -27,7 +28,7 @@ export default function LoggedInView() {
     full_name: "",
     age: "",
     avatar_url:
-      "https://uvlyxwknrtgayncklxjc.supabase.co/storage/v1/object/public/MathApp/pngwing.com.png",
+      "https://uvlyxwknrtgayncklxjc.supabase.co/storage/v1/object/public/avatars/default.png",
     points: 0,
   });
 
@@ -83,9 +84,11 @@ export default function LoggedInView() {
 
     fetchSessionAndProfile();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
 
     return () => {
       authListener.subscription.unsubscribe();
@@ -128,7 +131,8 @@ export default function LoggedInView() {
 
   const handleUploadImage = async () => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert("Greška", "Dopuštenje za pristup galeriji nije odobreno.");
         return;
@@ -149,46 +153,53 @@ export default function LoggedInView() {
         return;
       }
 
-      // čitanje slike kao base64 string
+      // Read the file as base64
       const base64 = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // kreiramo Blob za upload u Supabase
-      const blob = await (await fetch(`data:image/jpeg;base64,${base64}`)).blob();
-
       const fileExt = imageUri.split(".").pop();
       const fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
-      const filePath = fileName;
+      const filePath = `${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, blob, {
-          contentType: blob.type,
+      // Decode base64 to ArrayBuffer (važno za Supabase upload)
+      const arrayBuffer = decode(base64);
+
+      // Upload to Supabase storage
+      const { error } = await supabase.storage
+        .from("avatars") // Make sure this bucket exists in your Supabase storage
+        .upload(filePath, arrayBuffer, {
+          contentType: `image/${fileExt}`,
           upsert: true,
         });
 
-      if (uploadError) {
-        console.error("Greška pri uploadu slike:", uploadError);
-        Alert.alert("Greška", "Upload slike nije uspio: " + uploadError.message);
+      if (error) {
+        console.error("Upload error:", error);
+        Alert.alert("Greška", "Upload slike nije uspio.");
         return;
       }
 
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-        .from("avatars")
-        .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 dana valjanosti linka
+      // Get public URL
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
 
-      if (signedUrlError) {
-        console.error("Greška kod signed URL:", signedUrlError);
-        Alert.alert("Greška", "Ne mogu dobiti signed URL.");
-        return;
+      // Update profile
+      setProfile({ ...profile, avatar_url: publicUrl });
+
+      // Also update in database
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", session.user.id);
+
+      if (updateError) {
+        console.error("Update profile error:", updateError);
       }
 
-      setProfile({ ...profile, avatar_url: signedUrlData.signedUrl });
-      Alert.alert("Uspjeh", "Slika je postavljena!");
+      Alert.alert("Uspjeh", "Slika je uspješno postavljena!");
     } catch (error) {
       console.error("Greška pri uploadu slike:", error);
-      Alert.alert("Greška", "Došlo je do problema pri postavljanju slike.");
+      Alert.alert("Greška", "Došlo je do greške pri uploadu slike.");
     }
   };
 
@@ -196,7 +207,6 @@ export default function LoggedInView() {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="navy" />
-        <Text style={styles.text}>Učitavanje profila...</Text>
       </View>
     );
   }
