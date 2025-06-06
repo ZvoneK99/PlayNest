@@ -7,10 +7,9 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
-import { decode } from "base64-arraybuffer";
 import { supabase } from "../supabase"; // tvoj supabase klijent
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
@@ -147,29 +146,33 @@ export default function LoggedInView() {
 
       if (pickerResult.canceled) return;
 
-      const imageUri = pickerResult.assets?.[0]?.uri;
-      if (!imageUri) {
-        Alert.alert("Greška", "Nije odabrana nijedna slika.");
-        return;
+      let fileUri;
+      let fileName;
+      let fileExt;
+      let fileBlob;
+
+      if (Platform.OS === "web") {
+        fileUri = pickerResult.assets[0].uri;
+        const response = await fetch(fileUri);
+        fileBlob = await response.blob();
+
+        fileName = pickerResult.assets[0].fileName || `web_upload_${Date.now()}.jpg`;
+        fileExt = fileName.split(".").pop();
+      } else {
+        fileUri = pickerResult.assets[0].uri;
+        fileExt = fileUri.split(".").pop();
+        fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
+
+        const response = await fetch(fileUri);
+        fileBlob = await response.blob();
       }
 
-      // Read the file as base64
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const filePath = fileName;
 
-      const fileExt = imageUri.split(".").pop();
-      const fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      // Decode base64 to ArrayBuffer (važno za Supabase upload)
-      const arrayBuffer = decode(base64);
-
-      // Upload to Supabase storage
       const { error } = await supabase.storage
-        .from("avatars") // Make sure this bucket exists in your Supabase storage
-        .upload(filePath, arrayBuffer, {
-          contentType: `image/${fileExt}`,
+        .from("avatars")
+        .upload(filePath, fileBlob, {
+          contentType: fileBlob.type,
           upsert: true,
         });
 
@@ -179,14 +182,11 @@ export default function LoggedInView() {
         return;
       }
 
-      // Get public URL
       const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      // Update profile
       setProfile({ ...profile, avatar_url: publicUrl });
 
-      // Also update in database
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
