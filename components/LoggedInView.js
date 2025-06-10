@@ -10,7 +10,9 @@ import {
   Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { supabase } from "../supabase"; // tvoj supabase klijent
+import * as FileSystem from "expo-file-system";
+import { Buffer } from "buffer";
+import { supabase } from "../supabase";
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import { AuthContext } from "../AuthContext";
@@ -146,33 +148,30 @@ export default function LoggedInView() {
 
       if (pickerResult.canceled) return;
 
-      let fileUri;
-      let fileName;
-      let fileExt;
-      let fileBlob;
+      const fileUri = pickerResult.assets[0].uri;
+      const fileExt = fileUri.split(".").pop();
+      const fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
+
+      let fileData;
+      let contentType = 'image/jpeg';
 
       if (Platform.OS === "web") {
-        fileUri = pickerResult.assets[0].uri;
+        // WEB: fetch as blob
         const response = await fetch(fileUri);
-        fileBlob = await response.blob();
-
-        fileName = pickerResult.assets[0].fileName || `web_upload_${Date.now()}.jpg`;
-        fileExt = fileName.split(".").pop();
+        fileData = await response.blob();
+        contentType = fileData.type || 'image/jpeg';
       } else {
-        fileUri = pickerResult.assets[0].uri;
-        fileExt = fileUri.split(".").pop();
-        fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
-
-        const response = await fetch(fileUri);
-        fileBlob = await response.blob();
+        // MOBITEL: read as base64 and convert to buffer
+        const fileBuffer = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        fileData = Buffer.from(fileBuffer, "base64");
       }
-
-      const filePath = fileName;
 
       const { error } = await supabase.storage
         .from("avatars")
-        .upload(filePath, fileBlob, {
-          contentType: fileBlob.type,
+        .upload(fileName, fileData, {
+          contentType,
           upsert: true,
         });
 
@@ -182,10 +181,11 @@ export default function LoggedInView() {
         return;
       }
 
-      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
       const publicUrl = data.publicUrl;
+      const avatarUrlWithCacheBust = publicUrl + "?v=" + Date.now();
 
-      setProfile({ ...profile, avatar_url: publicUrl });
+      setProfile({ ...profile, avatar_url: avatarUrlWithCacheBust });
 
       const { error: updateError } = await supabase
         .from("profiles")

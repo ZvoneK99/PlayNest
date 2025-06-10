@@ -1,66 +1,38 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { supabase } from "../supabase";  // Import Supabase klijent
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { supabase } from '../supabase';
+import { useIsFocused } from '@react-navigation/native';
 
 const Leaderboard = () => {
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [players, setPlayers] = useState([]);
+    const isFocused = useIsFocused();
 
-    const fetchLeaderboard = async () => {
-        try {
+    useEffect(() => {
+        const fetchLeaderboard = async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('*')
+                .select('full_name, email, points')
                 .order('points', { ascending: false });
 
-            if (error) {
-                throw error;
-            }
-
-            setUsers(data);
-        } catch (error) {
-            console.error("Error fetching leaderboard data:", error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useFocusEffect(
-        useCallback(() => {
-            setLoading(true);
-            fetchLeaderboard();
-        }, [])
-    );
-
-    if (loading) {
-        return (
-            <View style={styles.container}>
-                <Text style={styles.loadingText}>Učitavanje ljestvice...</Text>
-            </View>
-        );
-    }
+            if (data) setPlayers(data);
+        };
+        fetchLeaderboard();
+    }, [isFocused]);
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Ljestvica</Text>
-            <FlatList
-                data={users}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item, index }) => (
-                    <View style={styles.leaderboardItem}>
-                        <Text style={styles.rank}>{index + 1}.</Text>
+            <Text style={styles.title}>Leaderboard</Text>
+            <ScrollView style={{ width: '100%' }}>
+                {players.map((player, idx) => (
+                    <View key={player.email || idx} style={styles.row}>
+                        <Text style={styles.rank}>{idx + 1}.</Text>
                         <Text style={styles.name}>
-                            {item.full_name && item.full_name.trim() !== ''
-                                ? item.full_name
-                                : item.email && item.email.trim() !== ''
-                                    ? item.email
-                                    : `Guest${item.id}`}
+                            {player.full_name ? player.full_name : player.email}
                         </Text>
-                        <Text style={styles.points}>{item.points || 0} bodova</Text>
+                        <Text style={styles.score}>{player.points} bodova</Text>
                     </View>
-                )}
-            />
+                ))}
+            </ScrollView>
         </View>
     );
 };
@@ -68,39 +40,41 @@ const Leaderboard = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
-        backgroundColor: "#fff",
-    },
-    loadingText: {
-        fontSize: 18,
-        textAlign: "center",
-        marginTop: 20,
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        paddingTop: 40,
     },
     title: {
-        fontSize: 24,
-        fontWeight: "bold",
-        textAlign: "center",
-        marginBottom: 20,
+        fontSize: 32,
+        fontWeight: 'bold',
+        marginBottom: 30,
     },
-    leaderboardItem: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        padding: 10,
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: "#ccc",
+        borderColor: '#ddd',
+        width: '100%',
     },
     rank: {
-        fontSize: 18,
-        fontWeight: "bold",
-        marginRight: 10,
+        fontSize: 20,
+        width: 30,
+        color: '#888',
     },
     name: {
+        fontSize: 20,
         flex: 1,
-        fontSize: 18,
+        color: '#333',
     },
-    points: {
-        fontSize: 18,
-        fontWeight: "bold",
+    score: {
+        fontSize: 20,
+        color: '#007BFF',
+        width: 100,
+        textAlign: 'right',
     },
 });
 
