@@ -4,11 +4,10 @@ import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import ErrorMessage from "./ui/ErrorMessage";
 import { AuthContext } from "../AuthContext";
-import { supabase } from "../supabase";
 import { useNavigation } from "@react-navigation/native";
 
 export default function LoggedOutView() {
-  const { login } = useContext(AuthContext); // login funkcija iz AuthContext-a
+  const { signIn } = useContext(AuthContext); // koristi signIn iz AuthContext-a
   const [email, setEmail] = useState("");
   const [passw, setPassw] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -18,21 +17,11 @@ export default function LoggedOutView() {
   // Handle login funkcija
   const handleLogin = async () => {
     setErrorMsg(""); // Reset error poruka
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: passw,
-    });
-
-    if (error) {
-      // Prikazivanje specifičnih poruka o greškama
-      if (error.message.includes("Invalid login credentials")) {
-        setErrorMsg("Neispravan email ili lozinka.");
-      } else {
-        setErrorMsg("Greška pri prijavi: " + error.message);
-      }
-    } else {
-      login(); // Pozivamo login funkciju iz AuthContext-a
+    try {
+      await signIn(email, passw); // koristi AuthContext signIn
+      // Ako je prijava uspješna, isLoggedIn će biti true i Navigation će prikazati LoggedInTabs
+    } catch (error) {
+      setErrorMsg("Greška pri prijavi. Provjerite podatke.");
     }
   };
 
