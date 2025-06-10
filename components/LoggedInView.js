@@ -130,78 +130,80 @@ export default function LoggedInView() {
     }
   };
 
-  const handleUploadImage = async () => {
-    try {
-      const permissionResult =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) {
-        Alert.alert("Greška", "Dopuštenje za pristup galeriji nije odobreno.");
-        return;
-      }
+ const handleUploadImage = async () => {
+  try {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert("Greška", "Dopuštenje za pristup galeriji nije odobreno.");
+      return;
+    }
 
-      const pickerResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (pickerResult.canceled) return;
+
+    const fileUri = pickerResult.assets[0].uri;
+    const fileExt = fileUri.split(".").pop();
+    const fileName =
+      Platform.OS === "web"
+        ? pickerResult.assets[0].fileName || `web_upload_${Date.now()}.jpg`
+        : `${session.user.id}_${Date.now()}.${fileExt}`;
+
+    let fileData;
+    let contentType = "image/jpeg";
+
+    if (Platform.OS === "web") {
+      const response = await fetch(fileUri);
+      fileData = await response.blob();
+      contentType = fileData.type || "image/jpeg";
+    } else {
+      const fileBuffer = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const { Buffer } = require("buffer");
+      fileData = Buffer.from(fileBuffer, "base64");
+    }
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, fileData, {
+        contentType,
+        upsert: true,
       });
 
-      if (pickerResult.canceled) return;
-
-      const fileUri = pickerResult.assets[0].uri;
-      const fileExt = fileUri.split(".").pop();
-      const fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
-
-      let fileData;
-      let contentType = 'image/jpeg';
-
-      if (Platform.OS === "web") {
-        // WEB: fetch as blob
-        const response = await fetch(fileUri);
-        fileData = await response.blob();
-        contentType = fileData.type || 'image/jpeg';
-      } else {
-        // MOBITEL: read as base64 and convert to buffer
-        const fileBuffer = await FileSystem.readAsStringAsync(fileUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        fileData = Buffer.from(fileBuffer, "base64");
-      }
-
-      const { error } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, fileData, {
-          contentType,
-          upsert: true,
-        });
-
-      if (error) {
-        console.error("Upload error:", error);
-        Alert.alert("Greška", "Upload slike nije uspio.");
-        return;
-      }
-
-      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
-      const publicUrl = data.publicUrl;
-      const avatarUrlWithCacheBust = publicUrl + "?v=" + Date.now();
-
-      setProfile({ ...profile, avatar_url: avatarUrlWithCacheBust });
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", session.user.id);
-
-      if (updateError) {
-        console.error("Update profile error:", updateError);
-      }
-
-      Alert.alert("Uspjeh", "Slika je uspješno postavljena!");
-    } catch (error) {
-      console.error("Greška pri uploadu slike:", error);
-      Alert.alert("Greška", "Došlo je do greške pri uploadu slike.");
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      Alert.alert("Greška", "Upload slike nije uspio.");
+      return;
     }
-  };
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
+    const publicUrl = data.publicUrl;
+    const avatarUrlWithCacheBust = publicUrl + "?v=" + Date.now();
+
+    setProfile({ ...profile, avatar_url: avatarUrlWithCacheBust });
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: publicUrl })
+      .eq("id", session.user.id);
+
+    if (updateError) {
+      console.error("Update profile error:", updateError);
+    }
+
+    Alert.alert("Uspjeh", "Slika je uspješno postavljena!");
+  } catch (error) {
+    console.error("Greška pri uploadu slike:", error);
+    Alert.alert("Greška", "Došlo je do greške pri uploadu slike.");
+  }
+};
+
 
   if (loading) {
     return (
