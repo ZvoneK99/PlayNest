@@ -103,13 +103,8 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     input: {
-<<<<<<< HEAD
         height: 50,
         width: '60%',
-=======
-        height: 60,
-        width: '90%',
->>>>>>> 4425719683bd5cbf6566af3c47808df758ba90cc
         borderColor: '#ccc',
         borderWidth: 2,
         borderRadius: 10,
