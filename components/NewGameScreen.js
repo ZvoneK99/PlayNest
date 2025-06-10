@@ -103,15 +103,15 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     input: {
-        height: 40,
-        width: '40%',
+        height: 50,
+        width: '60%',
         borderColor: '#ccc',
         borderWidth: 2,
         borderRadius: 10,
         textAlign: 'center',
         fontSize: 24,
         marginBottom: 15,
-        backgroundColor: 'white',
+        backgroundColor: 'white', 
     },
     button: {
         backgroundColor: '#4CAF50',

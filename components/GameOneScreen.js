@@ -384,8 +384,8 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     input: {
-        height: 40, // OVO JE PROMIJENJENO: Smanjeno s 50 na 40
-        width: '30%',
+        height: 50, // OVO JE PROMIJENJENO: Smanjeno s 50 na 40
+        width: '65%',
         borderColor: '#ccc',
         borderWidth: 2,
         borderRadius: 10,
