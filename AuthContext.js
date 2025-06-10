@@ -1,45 +1,37 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { supabase } from "./supabase"; // Osiguraj da je putanja točna
-import { Text } from "react-native";
+import { supabase } from "./supabase";
 
-// Kreiramo AuthContext
 export const AuthContext = createContext();
 
-// AuthProvider komponenta koja pruža korisničke podatke i funkcije za prijavu/odjavu
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [isLoggedIn, setIsLoggedIn] = useState(false); // Dodajemo isLoggedIn stanje
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const getSession = async () => {
-            const { data, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("Greška pri dohvaćanju sesije:", error);
-            } else if (data?.session) {
+        // Samo postavi user ako postoji sesija, ali NE isLoggedIn!
+        const checkSession = async () => {
+            const { data } = await supabase.auth.getSession();
+            if (data.session && data.session.user) {
                 setUser(data.session.user);
-                setIsLoggedIn(true);  // Korisnik je prijavljen ako postoji sesija
-            } else {
-                setIsLoggedIn(false);  // Ako nema sesije, korisnik nije prijavljen
-                setUser(null);
+                // setIsLoggedIn(true); // NE!
             }
-            setLoading(false);  // Završava učitavanje
         };
+        checkSession();
 
-        getSession();  // Pozivamo funkciju za dohvat sesije
-
-        // Subscribing to auth state changes
+        // Slušaj samo odjavu
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            setIsLoggedIn(!!session?.user); // Ažuriramo isLoggedIn stanje
+            if (_event === "SIGNED_OUT") {
+                setUser(null);
+                setIsLoggedIn(false);
+            }
         });
 
         return () => {
-            listener?.subscription.unsubscribe(); // Čistimo listener kad se komponenta unmounta
+            listener.subscription.unsubscribe();
         };
-    }, []);  // Pokreće se samo jednom, kada se komponenta mounta
+    }, []);
 
-    // Funkcija za registraciju korisnika
     const signUp = async (email, password) => {
         const { user, error } = await supabase.auth.signUp({ email, password });
         if (error) {
@@ -49,40 +41,35 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Funkcija za prijavu korisnika
     const signIn = async (email, password) => {
-        const { user, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
             console.error("Greška pri prijavi:", error);
-            
+            throw error;
         } else {
-            console.log("Korisnik prijavljen:", user);
+            setUser(data.user);
+            setIsLoggedIn(true);
+            console.log("Korisnik prijavljen:", data.user);
         }
     };
 
-    // Funkcija za odjavu korisnika
     const signOut = async (navigation) => {
         const { error } = await supabase.auth.signOut();
         if (error) {
             console.error("Greška pri odjavi:", error);
         } else {
+            setIsLoggedIn(false);
+            setUser(null);
+            if (navigation) navigation.navigate("Login");
             console.log("Korisnik odjavljen");
-            setIsLoggedIn(false); // Nakon odjave postavljamo isLoggedIn na false
-            setUser(null); // Čistimo korisničke podatke
-            navigation.navigate("Login");  // Navigiraj na Login ekran nakon odjave
         }
     };
 
-    if (loading) {
-        return <Text>Učitavam...</Text>; // Prikazuje loading poruku dok se sesija učitava
-    }
-
     return (
-        <AuthContext.Provider value={{ user, isLoggedIn, signUp, signIn, signOut }}>
+        <AuthContext.Provider value={{ user, isLoggedIn, signUp, signIn, signOut, loading }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-// Hook za korištenje AuthContext-a
 export const useAuth = () => useContext(AuthContext);

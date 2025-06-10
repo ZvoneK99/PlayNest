@@ -6,13 +6,16 @@ import RegisterView from "./components/RegisterView";
 import GamesScreen from "./components/GamesScreen";
 import NewGameScreen from "./components/NewGameScreen";
 import GameOneScreen from "./components/GameOneScreen";
+import TicTacToeScreen from "./components/TicTacToeScreen";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 
 const Stack = createStackNavigator();
 
-export default Navigation = () => {
-  const { isLoggedIn } = useContext(AuthContext);
+export default function Navigation() {
+  const { isLoggedIn, loading } = useContext(AuthContext);
+
+  if (loading) return null; // ili spinner dok traje provjera sesije
 
   return (
     <NavigationContainer>
@@ -38,6 +41,11 @@ export default Navigation = () => {
             component={GameOneScreen}
             options={{ title: "Igra pogađanja" }}
           />
+          <Stack.Screen
+            name="TicTacToe"
+            component={TicTacToeScreen}
+            options={{ title: "Križić-Kružić" }}
+          />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator>
@@ -55,4 +63,4 @@ export default Navigation = () => {
       )}
     </NavigationContainer>
   );
-};
+}
