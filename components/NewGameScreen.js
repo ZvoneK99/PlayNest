@@ -103,8 +103,8 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     input: {
-        height: 40,
-        width: '40%',
+        height: 60,
+        width: '90%',
         borderColor: '#ccc',
         borderWidth: 2,
         borderRadius: 10,

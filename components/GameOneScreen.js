@@ -21,7 +21,7 @@ const HANGMAN_ASCII = [
       |
       |
       |
-=========\
+=========
     `,
     `
   +---+
@@ -30,7 +30,7 @@ const HANGMAN_ASCII = [
       |
       |
       |
-=========\
+=========
     `,
     `
   +---+
@@ -39,7 +39,7 @@ const HANGMAN_ASCII = [
   |   |
       |
       |
-=========\
+=========
     `,
     `
   +---+
@@ -48,7 +48,7 @@ const HANGMAN_ASCII = [
  /|   |
       |
       |
-=========\
+=========
     `,
     `
   +---+
@@ -57,7 +57,7 @@ const HANGMAN_ASCII = [
  /|\\  |
       |
       |
-=========\
+=========
     `,
     `
   +---+
@@ -66,7 +66,7 @@ const HANGMAN_ASCII = [
  /|\\  |
  /    |
       |
-=========\
+=========
     `,
     `
   +---+
@@ -75,7 +75,7 @@ const HANGMAN_ASCII = [
  /|\\  |
  / \\  |
       |
-=========\
+=========
     `
 ];
 
@@ -114,7 +114,7 @@ const GameOneScreen = () => {
                 console.log("DEBUG: Korisnik je prijavljen. User ID:", userId);
 
                 const { data, error } = await supabase
-                    .from('profiles') // PROMIJENJENO OVDJE: 'users' -> 'profiles'
+                    .from('profiles')
                     .select('points')
                     .eq('id', userId)
                     .single();
@@ -122,7 +122,7 @@ const GameOneScreen = () => {
                 if (error) {
                     if (error.code === 'PGRST116') { // No rows found
                         console.warn("DEBUG: Korisnički zapis u 'profiles' tablici nije pronađen. Kreiranje novog zapisa sa 0 bodova.");
-                        await supabase.from('profiles').insert({ id: userId, points: 0 }); // PROMIJENJENO OVDJE: 'users' -> 'profiles'
+                        await supabase.from('profiles').insert({ id: userId, points: 0 });
                         setUserPoints(0);
                     } else {
                         console.error("Supabase Fetch Error (fetching points):", error.message);
@@ -149,7 +149,7 @@ const GameOneScreen = () => {
 
     const startNewGame = () => {
         const randomIndex = Math.floor(Math.random() * WORDS.length);
-        const newWord = WORDS[randomIndex].toLowerCase(); // Sve riječi u mala slova
+        const newWord = WORDS[randomIndex].toLowerCase();
         setWordToGuess(newWord);
         setGuessedLetters(new Set());
         setWrongGuesses(0);
@@ -168,12 +168,12 @@ const GameOneScreen = () => {
 
     const handleGuess = () => {
         if (gameOver || gameWon || !currentGuess) {
-            return; // Ne dozvoli unos ako je igra gotova ili prazno polje
+            return;
         }
 
         const letter = currentGuess.toLowerCase();
 
-        if (!/^[a-zčćžšđ]$/i.test(letter)) { // Provjeri je li unos jedno slovo (uključuje HR slova)
+        if (!/^[a-zčćžšđ]$/i.test(letter)) {
             setMessage('Molimo unesite jedno slovo (A-Z, ČĆŽŠĐ).');
             setCurrentGuess('');
             return;
@@ -200,13 +200,13 @@ const GameOneScreen = () => {
 
     // Provjera pobjede ili poraza
     useEffect(() => {
-        if (wordToGuess && !gameOver) { // Provjeri da igra nije već završena
-            const currentDisplay = displayWord().replace(/ /g, ''); // Ukloni razmake za provjeru
+        if (wordToGuess && !gameOver) {
+            const currentDisplay = displayWord().replace(/ /g, '');
             if (currentDisplay === wordToGuess) {
                 setGameWon(true);
                 setGameOver(true);
                 setMessage(`Čestitamo! Pogodili ste riječ: ${wordToGuess.toUpperCase()}`);
-                updateUserPoints(POINTS_PER_WIN); // Ažuriraj bodove u Supabaseu
+                updateUserPoints(POINTS_PER_WIN);
             } else if (wrongGuesses >= MAX_GUESSES) {
                 setGameWon(false);
                 setGameOver(true);
@@ -231,7 +231,7 @@ const GameOneScreen = () => {
             console.log("DEBUG: Pokušavam ažurirati bodove za User ID:", userId, "sa promjenom od:", pointsChange);
 
             const { data, error } = await supabase
-                .from('profiles') // PROMIJENJENO OVDJE: 'users' -> 'profiles'
+                .from('profiles')
                 .select('points')
                 .eq('id', userId)
                 .single();
@@ -245,7 +245,7 @@ const GameOneScreen = () => {
                 console.log(`DEBUG: Trenutni bodovi: ${currentPoints}, Novi bodovi (za ažuriranje): ${newPoints}`);
 
                 const { error: updateError } = await supabase
-                    .from('profiles') // PROMIJENJENO OVDJE: 'users' -> 'profiles'
+                    .from('profiles')
                     .update({ points: newPoints })
                     .eq('id', userId);
 
@@ -253,7 +253,7 @@ const GameOneScreen = () => {
                     console.error("Supabase Update Error:", updateError.message);
                     Alert.alert("Greška", `Nije moguće spremiti bodove: ${updateError.message}. Provjerite politike!`);
                 } else {
-                    setUserPoints(newPoints); // Update local state
+                    setUserPoints(newPoints);
                     console.log(`DEBUG: Korisnički bodovi uspješno ažurirani u Supabaseu na: ${newPoints}`);
                     Alert.alert("Bodovi", `Čestitamo! Dodano vam je ${pointsChange} bodova. Vaš ukupni zbroj je ${newPoints}.`);
                 }
@@ -305,6 +305,7 @@ const GameOneScreen = () => {
                     <TextInput
                         style={styles.input}
                         placeholder="Unesi slovo"
+                        placeholderTextColor="#888"
                         maxLength={1}
                         onChangeText={text => setCurrentGuess(text)}
                         value={currentGuess}
@@ -384,16 +385,18 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     input: {
-        height: 40, // OVO JE PROMIJENJENO: Smanjeno s 50 na 40
-        width: '30%',
-        borderColor: '#ccc',
-        borderWidth: 2,
-        borderRadius: 10,
+        height: 55,
+        width: '60%',
+        borderColor: '#007bff',
+        borderWidth: 3,
+        borderRadius: 12,
         textAlign: 'center',
         fontSize: 28,
-        paddingHorizontal: 10,
-        marginBottom: 15,
-        backgroundColor: 'white',
+        fontWeight: 'bold',
+        paddingHorizontal: 12,
+        marginBottom: 18,
+        backgroundColor: '#fff',
+        color: '#222',
     },
     guessButton: {
         backgroundColor: '#4CAF50',
