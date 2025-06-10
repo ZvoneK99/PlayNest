@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  ActionSheetIOS,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
@@ -130,80 +131,162 @@ export default function LoggedInView() {
     }
   };
 
- const handleUploadImage = async () => {
-  try {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert("Greška", "Dopuštenje za pristup galeriji nije odobreno.");
-      return;
-    }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (pickerResult.canceled) return;
-
-    const fileUri = pickerResult.assets[0].uri;
-    const fileExt = fileUri.split(".").pop();
-    const fileName =
-      Platform.OS === "web"
-        ? pickerResult.assets[0].fileName || `web_upload_${Date.now()}.jpg`
-        : `${session.user.id}_${Date.now()}.${fileExt}`;
-
-    let fileData;
-    let contentType = "image/jpeg";
-
-    if (Platform.OS === "web") {
-      const response = await fetch(fileUri);
-      fileData = await response.blob();
-      contentType = fileData.type || "image/jpeg";
+  const pickImage = async (fromCamera = false) => {
+    let pickerResult;
+    if (fromCamera) {
+      pickerResult = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+        base64: true,
+      });
     } else {
-      const fileBuffer = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
+      pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+        base64: true,
       });
-      const { Buffer } = require("buffer");
-      fileData = Buffer.from(fileBuffer, "base64");
     }
+    return pickerResult;
+  };
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(fileName, fileData, {
-        contentType,
-        upsert: true,
-      });
+  const handleUploadImage = async () => {
+    try {
+      // Permissions
+      if (Platform.OS !== "web") {
+        const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
+        const mediaPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!cameraPerm.granted && !mediaPerm.granted) {
+          Alert.alert("Greška", "Dopuštenje za pristup kameri ili galeriji nije odobreno.");
+          return;
+        }
+      }
 
-    if (uploadError) {
-      console.error("Upload error:", uploadError);
-      Alert.alert("Greška", "Upload slike nije uspio.");
-      return;
+      let pickerResult;
+
+      if (Platform.OS === "web") {
+        pickerResult = await pickImage(false);
+      } else if (Platform.OS === "ios") {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ["Odustani", "Kamera", "Galerija"],
+            cancelButtonIndex: 0,
+          },
+          async (buttonIndex) => {
+            if (buttonIndex === 1) {
+              pickerResult = await pickImage(true);
+            } else if (buttonIndex === 2) {
+              pickerResult = await pickImage(false);
+            } else {
+              return;
+            }
+            await processPickedImage(pickerResult);
+          }
+        );
+        return; // iOS will handle async in callback
+      } else {
+        // Android: show simple Alert for choice
+        await new Promise((resolve) => {
+          Alert.alert(
+            "Odaberi izvor slike",
+            "",
+            [
+              {
+                text: "Kamera",
+                onPress: async () => {
+                  pickerResult = await pickImage(true);
+                  await processPickedImage(pickerResult);
+                  resolve();
+                },
+              },
+              {
+                text: "Galerija",
+                onPress: async () => {
+                  pickerResult = await pickImage(false);
+                  await processPickedImage(pickerResult);
+                  resolve();
+                },
+              },
+              {
+                text: "Odustani",
+                style: "cancel",
+                onPress: () => resolve(),
+              },
+            ],
+            { cancelable: true }
+          );
+        });
+        return;
+      }
+
+      await processPickedImage(pickerResult);
+    } catch (error) {
+      console.error("Greška pri uploadu slike:", error);
+      Alert.alert("Greška", "Došlo je do greške pri uploadu slike.");
     }
+  };
 
-    const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
-    const publicUrl = data.publicUrl;
-    const avatarUrlWithCacheBust = publicUrl + "?v=" + Date.now();
+  const processPickedImage = async (pickerResult) => {
+    try {
+      if (!pickerResult || pickerResult.canceled) return;
 
-    setProfile({ ...profile, avatar_url: avatarUrlWithCacheBust });
+      const fileUri = pickerResult.assets[0].uri;
+      const fileExt = fileUri.split(".").pop();
+      const fileName =
+        Platform.OS === "web"
+          ? pickerResult.assets[0].fileName || `web_upload_${Date.now()}.jpg`
+          : `${session.user.id}_${Date.now()}.${fileExt}`;
 
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: publicUrl })
-      .eq("id", session.user.id);
+      let fileData;
+      let contentType = "image/jpeg";
 
-    if (updateError) {
-      console.error("Update profile error:", updateError);
+      if (Platform.OS === "web") {
+        const response = await fetch(fileUri);
+        fileData = await response.blob();
+        contentType = fileData.type || "image/jpeg";
+      } else {
+        // Use base64 string for upload
+        const base64 = pickerResult.assets[0].base64;
+        fileData = Buffer.from(base64, "base64");
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, fileData, {
+          contentType,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        Alert.alert("Greška", "Upload slike nije uspio.");
+        return;
+      }
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
+      const publicUrl = data.publicUrl;
+      const avatarUrlWithCacheBust = publicUrl + "?v=" + Date.now();
+
+      setProfile({ ...profile, avatar_url: avatarUrlWithCacheBust });
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", session.user.id);
+
+      if (updateError) {
+        console.error("Update profile error:", updateError);
+      }
+
+      Alert.alert("Uspjeh", "Slika je uspješno postavljena!");
+    } catch (error) {
+      console.error("Greška pri uploadu slike:", error);
+      Alert.alert("Greška", "Došlo je do greške pri uploadu slike.");
     }
-
-    Alert.alert("Uspjeh", "Slika je uspješno postavljena!");
-  } catch (error) {
-    console.error("Greška pri uploadu slike:", error);
-    Alert.alert("Greška", "Došlo je do greške pri uploadu slike.");
-  }
-};
-
+  };
 
   if (loading) {
     return (
