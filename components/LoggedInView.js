@@ -155,7 +155,6 @@ export default function LoggedInView() {
 
   const handleUploadImage = async () => {
     try {
-      // Permissions
       if (Platform.OS !== "web") {
         const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
         const mediaPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -186,9 +185,8 @@ export default function LoggedInView() {
             await processPickedImage(pickerResult);
           }
         );
-        return; // iOS will handle async in callback
+        return;
       } else {
-        // Android: show simple Alert for choice
         await new Promise((resolve) => {
           Alert.alert(
             "Odaberi izvor slike",
@@ -248,7 +246,6 @@ export default function LoggedInView() {
         fileData = await response.blob();
         contentType = fileData.type || "image/jpeg";
       } else {
-        // Use base64 string for upload
         const base64 = pickerResult.assets[0].base64;
         fileData = Buffer.from(base64, "base64");
       }
@@ -298,36 +295,38 @@ export default function LoggedInView() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Dobrodošli na sustav</Text>
+      <View style={styles.formBox}>
+        <Text style={styles.text}>Dobrodošli na sustav</Text>
 
-      <LoginButton title="Odjavi se" onPress={handleLogout} />
+        <LoginButton title="Odjavi se" onPress={handleLogout} />
 
-      {profile.avatar_url ? (
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
-        </View>
-      ) : (
-        <Text>Nema profilne slike!</Text>
-      )}
+        {profile.avatar_url ? (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
+          </View>
+        ) : (
+          <Text>Nema profilne slike!</Text>
+        )}
 
-      <TouchableOpacity style={styles.button} onPress={handleUploadImage}>
-        <Text style={styles.buttonText}>Postavi profilnu sliku</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleUploadImage}>
+          <Text style={styles.buttonText}>Postavi profilnu sliku</Text>
+        </TouchableOpacity>
 
-      <LoginInput
-        placeholder="Unesite svoje ime i prezime"
-        value={profile.full_name}
-        onChangeText={(text) => setProfile({ ...profile, full_name: text })}
-      />
+        <LoginInput
+          placeholder="Unesite svoje ime i prezime"
+          value={profile.full_name}
+          onChangeText={(text) => setProfile({ ...profile, full_name: text })}
+        />
 
-      <LoginInput
-        placeholder="Unesite svoje godine"
-        value={profile.age}
-        onChangeText={(text) => setProfile({ ...profile, age: text })}
-        keyboardType="numeric"
-      />
+        <LoginInput
+          placeholder="Unesite svoje godine"
+          value={profile.age}
+          onChangeText={(text) => setProfile({ ...profile, age: text })}
+          keyboardType="numeric"
+        />
 
-      <LoginButton title="Spremi profil" onPress={handleSaveProfile} />
+        <LoginButton title="Spremi profil" onPress={handleSaveProfile} />
+      </View>
     </View>
   );
 }
@@ -351,6 +350,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  formBox: {
+    width: "100%",
+    maxWidth: 400,
+    alignItems: "center",
+  },
   text: {
     fontSize: 24,
     marginBottom: 20,
@@ -362,7 +366,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "blue",
     borderRadius: 5,
-    width: "80%",
+    width: "100%",
     marginBottom: 10,
   },
   buttonText: {

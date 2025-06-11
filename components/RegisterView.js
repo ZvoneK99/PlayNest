@@ -86,7 +86,7 @@ export default function RegisterView({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: "#ffffff", // bijela pozadina
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -109,6 +109,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 20,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#000000", // crni tekst za svijetlu pozadinu
   },
 });
+

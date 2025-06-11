@@ -76,7 +76,7 @@ export default function LoggedOutView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: "#ffffff", // bijela pozadina
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -91,22 +91,21 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   formBox: {
-  width: isLargeScreen ? 400 : "100%",
-  alignItems: "center",          // centriranje djece horizontalno
-  justifyContent: "center",      // centriranje djece vertikalno
-
-},
-
+    width: isLargeScreen ? 400 : "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   registerContainer: {
     marginTop: 20,
     alignItems: "center",
   },
   registerPrompt: {
-    color: "#fff",
+    color: "#000000", // crni tekst
   },
   registerText: {
-    color: "#00bfff",
+    color: "#007aff", // klasična plava za link
     marginTop: 5,
     fontWeight: "bold",
   },
 });
+
