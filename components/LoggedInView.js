@@ -11,13 +11,14 @@ import {
   ActionSheetIOS,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import { Buffer } from "buffer";
 import { supabase } from "../supabase";
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import { AuthContext } from "../AuthContext";
 import { useNavigation } from "@react-navigation/native";
+
+const DEFAULT_AVATAR = "https://uvlyxwknrtgayncklxjc.supabase.co/storage/v1/object/public/avatars/default.png";
 
 export default function LoggedInView() {
   const { signOut } = useContext(AuthContext);
@@ -29,8 +30,7 @@ export default function LoggedInView() {
   const [profile, setProfile] = useState({
     full_name: "",
     age: "",
-    avatar_url:
-      "https://uvlyxwknrtgayncklxjc.supabase.co/storage/v1/object/public/avatars/default.png",
+    avatar_url: DEFAULT_AVATAR,
     points: 0,
   });
 
@@ -57,7 +57,7 @@ export default function LoggedInView() {
 
         setSession(session);
 
-        let { data, error } = await supabase
+        const { data, error } = await supabase
           .from("profiles")
           .select("full_name, age, avatar_url, points")
           .eq("id", session.user.id)
@@ -72,7 +72,7 @@ export default function LoggedInView() {
           setProfile({
             full_name: data.full_name || "",
             age: data.age ? data.age.toString() : "",
-            avatar_url: data.avatar_url || profile.avatar_url,
+            avatar_url: data.avatar_url || DEFAULT_AVATAR,
             points: data.points || 0,
           });
         }
@@ -132,24 +132,21 @@ export default function LoggedInView() {
   };
 
   const pickImage = async (fromCamera = false) => {
-    let pickerResult;
-    if (fromCamera) {
-      pickerResult = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-        base64: true,
-      });
-    } else {
-      pickerResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-        base64: true,
-      });
-    }
+    const pickerResult = fromCamera
+      ? await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+          base64: true,
+        })
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+          base64: true,
+        });
     return pickerResult;
   };
 
@@ -175,13 +172,10 @@ export default function LoggedInView() {
             cancelButtonIndex: 0,
           },
           async (buttonIndex) => {
-            if (buttonIndex === 1) {
-              pickerResult = await pickImage(true);
-            } else if (buttonIndex === 2) {
-              pickerResult = await pickImage(false);
-            } else {
-              return;
-            }
+            if (buttonIndex === 1) pickerResult = await pickImage(true);
+            else if (buttonIndex === 2) pickerResult = await pickImage(false);
+            else return;
+
             await processPickedImage(pickerResult);
           }
         );
@@ -233,10 +227,7 @@ export default function LoggedInView() {
 
       const fileUri = pickerResult.assets[0].uri;
       const fileExt = fileUri.split(".").pop();
-      const fileName =
-        Platform.OS === "web"
-          ? pickerResult.assets[0].fileName || `web_upload_${Date.now()}.jpg`
-          : `${session.user.id}_${Date.now()}.${fileExt}`;
+      const fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
 
       let fileData;
       let contentType = "image/jpeg";
@@ -264,10 +255,9 @@ export default function LoggedInView() {
       }
 
       const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
-      const publicUrl = data.publicUrl;
-      const avatarUrlWithCacheBust = publicUrl + "?v=" + Date.now();
+      const publicUrl = data.publicUrl + "?v=" + Date.now();
 
-      setProfile({ ...profile, avatar_url: avatarUrlWithCacheBust });
+      setProfile({ ...profile, avatar_url: publicUrl });
 
       const { error: updateError } = await supabase
         .from("profiles")
@@ -300,13 +290,12 @@ export default function LoggedInView() {
 
         <LoginButton title="Odjavi se" onPress={handleLogout} />
 
-        {profile.avatar_url ? (
-          <View style={styles.imageContainer}>
-            <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
-          </View>
-        ) : (
-          <Text>Nema profilne slike!</Text>
-        )}
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: profile.avatar_url || DEFAULT_AVATAR }}
+            style={styles.profileImage}
+          />
+        </View>
 
         <TouchableOpacity style={styles.button} onPress={handleUploadImage}>
           <Text style={styles.buttonText}>Postavi profilnu sliku</Text>
