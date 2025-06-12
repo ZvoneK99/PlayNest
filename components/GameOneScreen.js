@@ -280,8 +280,9 @@ const GameOneScreen = () => {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
+            <Text style={styles.title}>Pogađanje Riječi</Text>
+
             <Text style={styles.pointsText}>Ukupno bodova: {userPoints}</Text>
-            <Text style={styles.title}>Pogađanje Riječi (Hangman)</Text>
 
             <View style={styles.hangmanArtContainer}>
                 <Text style={styles.hangmanArt}>{HANGMAN_ASCII[wrongGuesses]}</Text>

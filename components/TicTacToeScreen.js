@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { supabase } from "../supabase";
 
 const emptyBoard = () => Array(3).fill(null).map(() => Array(3).fill(""));
 
@@ -11,27 +12,94 @@ function getAvailableMoves(board) {
   return moves;
 }
 
-function computerMove(board) {
+function evaluateWinner(b) {
+  for (let i = 0; i < 3; i++) {
+    if (b[i][0] && b[i][0] === b[i][1] && b[i][1] === b[i][2]) return b[i][0];
+    if (b[0][i] && b[0][i] === b[1][i] && b[1][i] === b[2][i]) return b[0][i];
+  }
+  if (b[0][0] && b[0][0] === b[1][1] && b[1][1] === b[2][2]) return b[0][0];
+  if (b[0][2] && b[0][2] === b[1][1] && b[1][1] === b[2][0]) return b[0][2];
+  if (b.flat().every((cell) => cell)) return "Neriješeno";
+  return null;
+}
+
+function minimax(board, depth, isMaximizing) {
+  const winner = evaluateWinner(board);
+  if (winner === "O") return { score: 10 - depth };
+  if (winner === "X") return { score: depth - 10 };
+  if (winner === "Neriješeno") return { score: 0 };
+
   const moves = getAvailableMoves(board);
-  if (moves.length === 0) return null;
-  const idx = Math.floor(Math.random() * moves.length);
-  return moves[idx];
+  let bestMove;
+
+  if (isMaximizing) {
+    let bestScore = -Infinity;
+    for (const [i, j] of moves) {
+      board[i][j] = "O";
+      const result = minimax(board, depth + 1, false);
+      board[i][j] = "";
+      if (result.score > bestScore) {
+        bestScore = result.score;
+        bestMove = [i, j];
+      }
+    }
+    return { score: bestScore, move: bestMove };
+  } else {
+    let bestScore = Infinity;
+    for (const [i, j] of moves) {
+      board[i][j] = "X";
+      const result = minimax(board, depth + 1, true);
+      board[i][j] = "";
+      if (result.score < bestScore) {
+        bestScore = result.score;
+        bestMove = [i, j];
+      }
+    }
+    return { score: bestScore, move: bestMove };
+  }
+}
+
+function smartComputerMove(board) {
+  const { move } = minimax(board, 0, true);
+  return move;
 }
 
 const TicTacToeScreen = () => {
   const [board, setBoard] = useState(emptyBoard());
   const [current, setCurrent] = useState("X");
   const [winner, setWinner] = useState(null);
+  const [score, setScore] = useState(0);
 
-  const checkWinner = (b) => {
-    for (let i = 0; i < 3; i++) {
-      if (b[i][0] && b[i][0] === b[i][1] && b[i][1] === b[i][2]) return b[i][0];
-      if (b[0][i] && b[0][i] === b[1][i] && b[1][i] === b[2][i]) return b[0][i];
+  useEffect(() => {
+    const fetchPoints = async () => {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("points")
+        .eq("id", user.id)
+        .single();
+      if (data) setScore(data.points || 0);
+    };
+    fetchPoints();
+  }, []);
+
+  const updatePoints = async (pointsChange) => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("points")
+      .eq("id", user.id)
+      .single();
+    if (data) {
+      const newPoints = (data.points || 0) + pointsChange;
+      await supabase
+        .from("profiles")
+        .update({ points: newPoints })
+        .eq("id", user.id);
+      setScore(newPoints);
     }
-    if (b[0][0] && b[0][0] === b[1][1] && b[1][1] === b[2][2]) return b[0][0];
-    if (b[0][2] && b[0][2] === b[1][1] && b[1][1] === b[2][0]) return b[0][2];
-    if (b.flat().every((cell) => cell)) return "Neriješeno";
-    return null;
   };
 
   const handlePress = (row, col) => {
@@ -39,10 +107,12 @@ const TicTacToeScreen = () => {
     const newBoard = board.map((r, i) =>
       r.map((cell, j) => (i === row && j === col ? "X" : cell))
     );
-    const win = checkWinner(newBoard);
+    const win = evaluateWinner(newBoard);
     setBoard(newBoard);
     if (win) {
       setWinner(win);
+      if (win === "X") updatePoints(3);
+      else if (win === "O") updatePoints(-1);
       showEndAlert(win);
       return;
     }
@@ -51,16 +121,18 @@ const TicTacToeScreen = () => {
   };
 
   const computerTurn = (b) => {
-    const move = computerMove(b);
+    const move = smartComputerMove(b);
     if (!move) return;
     const [row, col] = move;
     const newBoard = b.map((r, i) =>
       r.map((cell, j) => (i === row && j === col ? "O" : cell))
     );
-    const win = checkWinner(newBoard);
+    const win = evaluateWinner(newBoard);
     setBoard(newBoard);
     if (win) {
       setWinner(win);
+      if (win === "X") updatePoints(3);
+      else if (win === "O") updatePoints(-1);
       showEndAlert(win);
       return;
     }
@@ -85,7 +157,9 @@ const TicTacToeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Križić-Kružić (vs. Računalo)</Text>
+      <Text style={styles.title}>Križić-Kružić</Text>
+      <Text style={styles.score}>Bodovi: {score}</Text>
+
       <View style={styles.board}>
         {board.map((row, i) => (
           <View key={i} style={styles.row}>
@@ -102,6 +176,7 @@ const TicTacToeScreen = () => {
           </View>
         ))}
       </View>
+
       {winner && (
         <Text style={styles.winnerText}>
           {winner === "Neriješeno"
@@ -128,7 +203,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 30,
+    marginBottom: 10,
+  },
+  score: {
+    fontSize: 22,
+    marginBottom: 20,
+    color: "#007BFF",
   },
   board: {
     borderWidth: 2,
