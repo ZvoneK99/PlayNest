@@ -1,22 +1,28 @@
 import React, { useState, useContext } from "react";
 import { View, StyleSheet, Text, Image, Dimensions, Platform } from "react-native";
-import { supabase } from "../supabase";  // Tvoj Supabase klijent
+import { supabase } from "../supabase";
 import LoginInput from "./ui/LoginInput";
 import LoginButton from "./ui/LoginButton";
 import ErrorMessage from "./ui/ErrorMessage";
-import { AuthContext } from "../AuthContext"; 
+import { AuthContext } from "../AuthContext";
 
 const screenWidth = Dimensions.get("window").width;
 const isLargeScreen = Platform.OS === "web" && screenWidth > 600;
 
 export default function RegisterView({ navigation }) {
-  const { login } = useContext(AuthContext);
+  const { signIn } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [passw, setPassw] = useState("");
+  const [confirmPassw, setConfirmPassw] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleRegister = async () => {
-    setErrorMsg(""); // Resetiraj greške
+    setErrorMsg("");
+
+    if (passw !== confirmPassw) {
+      setErrorMsg("Lozinke se ne podudaraju.");
+      return;
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -34,16 +40,15 @@ export default function RegisterView({ navigation }) {
       return;
     }
 
-    // ⬇️ Insert u 'profiles' tablicu
     const { error: profileError } = await supabase
       .from("profiles")
       .insert([
         {
-          id: user.id,      // isti kao id iz auth
+          id: user.id,
           email: email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          points: 0,         // inicijalna vrijednost
+          points: 0,
         },
       ]);
 
@@ -52,8 +57,12 @@ export default function RegisterView({ navigation }) {
       return;
     }
 
-    // ⬇️ Ako sve prođe OK:
-    login(); // ili navigation.navigate("Home")
+    // Automatska prijava nakon uspješne registracije
+    try {
+      await signIn(email, passw);
+    } catch (err) {
+      setErrorMsg("Račun je kreiran, ali prijava nije uspjela.");
+    }
   };
 
   return (
@@ -64,19 +73,30 @@ export default function RegisterView({ navigation }) {
 
       <View style={styles.formBox}>
         <Text style={styles.title}>Registracija</Text>
+
         <LoginInput
           placeholder="Unesite Vašu email adresu"
           value={email}
           secureTextEntry={false}
           onChangeText={setEmail}
         />
+
         <LoginInput
           placeholder="Unesite lozinku"
           value={passw}
           secureTextEntry={true}
           onChangeText={setPassw}
         />
+
+        <LoginInput
+          placeholder="Potvrdite lozinku"
+          value={confirmPassw}
+          secureTextEntry={true}
+          onChangeText={setConfirmPassw}
+        />
+
         <ErrorMessage error={errorMsg} />
+
         <LoginButton title="Registriraj se" onPress={handleRegister} />
       </View>
     </View>
@@ -86,7 +106,7 @@ export default function RegisterView({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff", // bijela pozadina
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -109,7 +129,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 20,
     fontWeight: "bold",
-    color: "#000000", // crni tekst za svijetlu pozadinu
+    color: "#000000",
   },
 });
-
