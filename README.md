@@ -26,17 +26,13 @@ This is a mobile application project developed as part of the university course 
 
 ## 📸 Screenshots
 
-| Login View | Home Screen | Profile |
-|------------|-------------|---------|
-| ![Login](/assets/Screenshots/Login.jpg) | ![Home](/assets/Screenshots/HomeScreen.jpg) | ![Profile](/assets/Screenshots/Profile.jpg) |
+| Login View | Profile | Leaderboard |
+|------------|---------|-------------|
+| ![Login](assets/Screenshots/Login.jpg) | ![Profile](assets/Screenshots/Profile.jpg) | ![Leaderboard](assets/Screenshots/Leaderboard.jpg) |
 
-| Leaderboard | Games Screen | Math Quiz |
-|-------------|--------------|-----------|
-| ![Leaderboard](/assets/Screenshots/Leaderboard.jpg) | ![Games](/assets/Screenshots/GamesScreen.jpg) | ![MathQuiz](/assets/Screenshots/MathQuiz.jpg) |
-
-| Hangman | Tic Tac Toe |
-|---------|-------------|
-| ![Hangman](/assets/Screenshots/Hangman.jpg) | ![TicTacToe](/assets/Screenshots/TicTacToe.jpg) |
+| Math Quiz | Hangman | Tic Tac Toe |
+|-----------|---------|-------------|
+| ![Math Quiz](assets/Screenshots/MathQuiz.jpg) | ![Hangman](assets/Screenshots/Hangman.jpg) | ![Tic Tac Toe](assets/Screenshots/TicTacToe.jpg) |
 
 ## 🚀 Getting Started
 
