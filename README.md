@@ -39,7 +39,7 @@ This is a mobile application project developed as part of the university course 
 To run the app locally:
 
 ```bash
-git clone https://github.com/your-username/playnest.git
+git clone https://github.com/ZvoneK99/PlayNest.git
 cd playnest
 npm install
 npx expo start
